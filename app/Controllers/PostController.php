@@ -11,16 +11,11 @@ class PostController
     private Post $postModel;
     private AuthService $auth;
 
-    /**
-     * Constructor with Dependency Injection
-     * Dependencies are injected through the constructor
-     */
     public function __construct()
     {
-        // Initialize dependencies
         $config = require '../config/database.php';
         $db = \App\Core\Database::getInstance($config);
-        
+
         $this->postModel = new Post($db);
         $this->auth = new AuthService($db);
     }
@@ -30,14 +25,14 @@ class PostController
      */
     public function index($params = [])
     {
-        $page = (int) ($_GET['page'] ?? 1);
-        $limit = 10;
+        $page   = max(1, (int) ($_GET['page'] ?? 1));
+        $limit  = 4;
         $offset = ($page - 1) * $limit;
 
-        $posts = $this->postModel->getPostsPaginated($limit, $offset);
+        $posts      = $this->postModel->getPostsPaginated($limit, $offset);
         $totalPosts = $this->postModel->getTotalPosts();
-        $totalPages = ceil($totalPosts / $limit);
-        
+        $totalPages = (int) ceil($totalPosts / $limit);
+
         require '../views/posts/index.php';
     }
 
@@ -53,7 +48,6 @@ class PostController
             exit;
         }
 
-        // Validate ID is numeric
         $id = (int) $id;
         if ($id <= 0) {
             http_response_code(404);
