@@ -18,7 +18,9 @@ $router->get('/posts/{id}', 'PostController@show');
 // Admin Routes
 $router->get('/admin/login', 'AdminController@login');
 $router->post('/admin/login', 'AdminController@handleLogin');
-$router->get('/admin/logout', 'AdminController@logout');
+
+// FIX: Logout is now POST-only (prevents CSRF-triggered logouts via GET requests)
+$router->post('/admin/logout', 'AdminController@logout');
 
 $router->get('/admin/dashboard', 'AdminController@dashboard');
 
@@ -31,7 +33,7 @@ $router->post('/admin/posts/{id}/edit', 'AdminController@updatePost');
 $router->post('/admin/posts/{id}/delete', 'AdminController@deletePost');
 
 // Dispatch the request
-$uri = $_SERVER['REQUEST_URI'];
+$uri    = $_SERVER['REQUEST_URI'];
 $method = $_SERVER['REQUEST_METHOD'];
 
 $router->dispatch($uri, $method);

@@ -87,6 +87,20 @@ $pdo->exec("
 ");
 log_step('Table `posts` OK.');
 
+// ─── Rate limiting table ─────────────────────────────────────────────────────
+
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS login_attempts (
+        id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        identifier VARCHAR(255) NOT NULL,
+        type       ENUM('ip', 'user') NOT NULL,
+        attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_identifier_type (identifier, type),
+        INDEX idx_attempted_at (attempted_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+");
+log_step('Table `login_attempts` OK.');
+
 // ─── Seed default admin ──────────────────────────────────────────────────────
 
 log_section('Admin User');
@@ -97,7 +111,8 @@ $check->execute(['admin@cms.com']);
 if ($check->fetch()) {
     log_step('Admin user already exists, skipping.');
 } else {
-    $hash = password_hash('password', PASSWORD_BCRYPT);
+    // FIX: Use Argon2ID (consistent with Security::hashPassword())
+    $hash = password_hash('password', PASSWORD_ARGON2ID);
     $stmt = $pdo->prepare('INSERT INTO users (name, email, password) VALUES (?, ?, ?)');
     $stmt->execute(['Admin', 'admin@cms.com', $hash]);
     log_step('Admin user created (admin@cms.com / password).');

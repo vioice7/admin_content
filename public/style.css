@@ -166,7 +166,6 @@ table td.actions .button-danger {
 }
 
 form {
-    background: #f4f4f4;
     border-radius: 4px;
 }
 
@@ -329,3 +328,20 @@ footer {
     color: white;
     border-color: #3498db;
 }
+
+.nav-logout-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-family: inherit;
+    font-size: inherit;
+    margin-left: 32px;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.3s;
+}
+ 
+.nav-logout-btn:hover {
+    color: #3498db;
+}
+ 

@@ -22,8 +22,6 @@ $content = <<<HTML
 
         <button type="submit" class="button full-width-button">Login</button>
     </form>
-
-    <p class="login-note">Default credentials: admin@cms.com / password</p>
 </div>
 HTML;
 

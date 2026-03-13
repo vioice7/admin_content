@@ -22,27 +22,25 @@ class User
      */
     public function create(string $name, string $email, string $password): bool
     {
-        // Validate password strength
         $passwordErrors = \App\Core\Security::validatePasswordStrength($password);
         if (!empty($passwordErrors)) {
             throw new \InvalidArgumentException('Password does not meet requirements: ' . implode(', ', $passwordErrors));
         }
 
-        // Validate email
         if (!\App\Core\Security::validateEmail($email)) {
             throw new \InvalidArgumentException('Invalid email address');
         }
 
-        // Sanitize inputs
-        $name = \App\Core\Security::sanitizeString($name);
+        // FIX: sanitizeString now only trims — no double htmlspecialchars before DB storage
+        $name  = \App\Core\Security::sanitizeString($name);
         $email = \App\Core\Security::sanitizeString($email);
 
-        $sql = "INSERT INTO users (name, email, password, created_at) 
+        $sql = "INSERT INTO users (name, email, password, created_at)
                 VALUES (:name, :email, :password, NOW())";
-        
+
         return $this->db->query($sql, [
-            ':name' => $name,
-            ':email' => $email,
+            ':name'     => $name,
+            ':email'    => $email,
             ':password' => \App\Core\Security::hashPassword($password)
         ]) !== false;
     }
@@ -53,7 +51,7 @@ class User
     public function findByEmail(string $email)
     {
         $sql = "SELECT * FROM users WHERE email = :email LIMIT 1";
-        
+
         return $this->db->query($sql, [':email' => $email])->fetch(\PDO::FETCH_ASSOC);
     }
 
@@ -63,7 +61,7 @@ class User
     public function findById(int $id)
     {
         $sql = "SELECT * FROM users WHERE id = :id LIMIT 1";
-        
+
         return $this->db->query($sql, [':id' => $id])->fetch(\PDO::FETCH_ASSOC);
     }
 
@@ -81,10 +79,10 @@ class User
     public function update(int $id, string $name, string $email): bool
     {
         $sql = "UPDATE users SET name = :name, email = :email WHERE id = :id";
-        
+
         return $this->db->query($sql, [
-            ':id' => $id,
-            ':name' => $name,
+            ':id'    => $id,
+            ':name'  => $name,
             ':email' => $email
         ]) !== false;
     }
@@ -110,9 +108,12 @@ class User
         return $this->email;
     }
 
+    /**
+     * FIX: Use Argon2ID via Security::hashPassword(), consistent with the rest of the app.
+     */
     public function setPassword(string $password): void
     {
-        $this->password = password_hash($password, PASSWORD_BCRYPT);
+        $this->password = \App\Core\Security::hashPassword($password);
     }
 
     public function getId(): int

@@ -6,17 +6,17 @@ use App\Models\User;
 use App\Core\Database;
 
 /**
- * Authentication Service - Dependency Injection in action
- * This service handles all authentication logic
+ * Authentication Service
  */
 class AuthService
 {
     private User $userModel;
+    private Database $db;
     private const SESSION_KEY = 'user_id';
 
     public function __construct(Database $db)
     {
-        // Dependency Injection: AuthService receives Database through constructor
+        $this->db = $db;
         $this->userModel = new User($db);
     }
 
@@ -25,7 +25,6 @@ class AuthService
      */
     public function register(string $name, string $email, string $password): bool
     {
-        // Check if user already exists
         if ($this->userModel->findByEmail($email)) {
             return false;
         }
@@ -35,57 +34,48 @@ class AuthService
 
     /**
      * Login a user
+     * FIX: Pass PDO connection to rate limit methods (no longer session-based).
      */
     public function login(string $email, string $password): bool
     {
-        // Sanitize email
-        $email = \App\Core\Security::sanitizeString($email);
+        $email     = \App\Core\Security::sanitizeString($email);
+        $clientIP  = \App\Core\Security::getClientIP();
+        $pdo       = $this->db->getConnection();
 
-        // Get client IP for rate limiting
-        $clientIP = \App\Core\Security::getClientIP();
-
-        // Check rate limiting
-        if (!\App\Core\Security::checkLoginRateLimit($clientIP, 'ip')) {
+        // Check IP rate limit
+        if (!\App\Core\Security::checkLoginRateLimit($pdo, $clientIP, 'ip')) {
             \App\Core\Security::logSecurityEvent('rate_limit_exceeded', ['type' => 'ip', 'identifier' => $clientIP]);
             return false;
         }
 
-        // Find user
         $user = $this->userModel->findByEmail($email);
 
         if (!$user) {
-            // Record failed attempt for IP
-            \App\Core\Security::recordLoginAttempt($clientIP, 'ip');
+            \App\Core\Security::recordLoginAttempt($pdo, $clientIP, 'ip');
             \App\Core\Security::logSecurityEvent('login_failed', ['reason' => 'user_not_found', 'email' => $email]);
             return false;
         }
 
-        // Check rate limiting for specific user
-        if (!\App\Core\Security::checkLoginRateLimit($user['email'], 'user')) {
+        // Check per-user rate limit
+        if (!\App\Core\Security::checkLoginRateLimit($pdo, $user['email'], 'user')) {
             \App\Core\Security::logSecurityEvent('rate_limit_exceeded', ['type' => 'user', 'identifier' => $user['email']]);
             return false;
         }
 
-        // Verify password
         if (!$this->userModel->verifyPassword($password, $user['password'])) {
-            // Record failed attempts
-            \App\Core\Security::recordLoginAttempt($clientIP, 'ip');
-            \App\Core\Security::recordLoginAttempt($user['email'], 'user');
+            \App\Core\Security::recordLoginAttempt($pdo, $clientIP, 'ip');
+            \App\Core\Security::recordLoginAttempt($pdo, $user['email'], 'user');
             \App\Core\Security::logSecurityEvent('login_failed', ['reason' => 'invalid_password', 'user_id' => $user['id']]);
             return false;
         }
 
-        // Successful login - reset rate limiting counters
-        \App\Core\Security::resetLoginAttempts($clientIP, 'ip');
-        \App\Core\Security::resetLoginAttempts($user['email'], 'user');
+        // Successful login
+        \App\Core\Security::resetLoginAttempts($pdo, $clientIP, 'ip');
+        \App\Core\Security::resetLoginAttempts($pdo, $user['email'], 'user');
 
-        // Set session
         $_SESSION[self::SESSION_KEY] = $user['id'];
 
-        // Regenerate session ID for security
         \App\Core\Security::regenerateSession();
-
-        // Regenerate CSRF token
         \App\Core\Security::regenerateCsrfToken();
 
         \App\Core\Security::logSecurityEvent('login_successful', ['user_id' => $user['id']]);
@@ -128,7 +118,6 @@ class AuthService
     {
         $userId = $this->getCurrentUserId();
         \App\Core\Security::logSecurityEvent('logout', ['user_id' => $userId]);
-
         \App\Core\Security::destroySession();
     }
 }

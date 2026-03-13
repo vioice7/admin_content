@@ -16,7 +16,6 @@ class Security
      */
     public static function configureSession(): void
     {
-        // Set secure session configuration
         ini_set('session.cookie_httponly', 1);
         ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) ? 1 : 0);
         ini_set('session.cookie_samesite', 'Strict');
@@ -24,9 +23,8 @@ class Security
         ini_set('session.use_only_cookies', 1);
         ini_set('session.gc_maxlifetime', self::SESSION_TIMEOUT);
 
-        // Set session cookie parameters
         session_set_cookie_params([
-            'lifetime' => 0, // Session cookie
+            'lifetime' => 0,
             'path' => '/',
             'domain' => '',
             'secure' => isset($_SERVER['HTTPS']),
@@ -46,7 +44,6 @@ class Security
             session_start();
         }
 
-        // Check session timeout
         if (isset($_SESSION['last_activity']) &&
             (time() - $_SESSION['last_activity']) > self::SESSION_TIMEOUT) {
             self::destroySession();
@@ -69,10 +66,8 @@ class Security
      */
     public static function destroySession(): void
     {
-        // Clear session data
         $_SESSION = [];
 
-        // Delete session cookie
         if (ini_get('session.use_cookies')) {
             $params = session_get_cookie_params();
             setcookie(
@@ -139,15 +134,12 @@ class Security
         if (strlen($password) < 12) {
             $errors[] = 'Password must be at least 12 characters long';
         }
-
         if (!preg_match('/[A-Z]/', $password)) {
             $errors[] = 'Password must contain at least one uppercase letter';
         }
-
         if (!preg_match('/[a-z]/', $password)) {
             $errors[] = 'Password must contain at least one lowercase letter';
         }
-
         if (!preg_match('/[0-9]/', $password)) {
             $errors[] = 'Password must contain at least one number';
         }
@@ -172,58 +164,43 @@ class Security
     }
 
     /**
-     * Check login rate limiting
+     * FIX: Rate limiting now uses the database, not the session.
+     * Requires a PDO connection to be passed in.
      */
-    public static function checkLoginRateLimit(string $identifier, string $type = 'ip'): bool
+    public static function checkLoginRateLimit(\PDO $pdo, string $identifier, string $type = 'ip'): bool
     {
-        $key = "login_attempts_{$type}_{$identifier}";
-        $timeKey = "login_time_{$type}_{$identifier}";
-
         $maxAttempts = $type === 'ip' ? self::MAX_LOGIN_ATTEMPTS_IP : self::MAX_LOGIN_ATTEMPTS_USER;
+        $windowStart = date('Y-m-d H:i:s', time() - self::LOGIN_ATTEMPT_WINDOW);
 
-        if (!isset($_SESSION[$key])) {
-            $_SESSION[$key] = 0;
-            $_SESSION[$timeKey] = time();
-        }
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM login_attempts
+             WHERE identifier = ? AND type = ? AND attempted_at >= ?'
+        );
+        $stmt->execute([$identifier, $type, $windowStart]);
 
-        // Reset counter if window has passed
-        if ((time() - $_SESSION[$timeKey]) > self::LOGIN_ATTEMPT_WINDOW) {
-            $_SESSION[$key] = 0;
-            $_SESSION[$timeKey] = time();
-        }
-
-        if ($_SESSION[$key] >= $maxAttempts) {
-            return false; // Rate limited
-        }
-
-        return true;
+        return (int) $stmt->fetchColumn() < $maxAttempts;
     }
 
     /**
-     * Record login attempt
+     * FIX: Record attempt in database.
      */
-    public static function recordLoginAttempt(string $identifier, string $type = 'ip'): void
+    public static function recordLoginAttempt(\PDO $pdo, string $identifier, string $type = 'ip'): void
     {
-        $key = "login_attempts_{$type}_{$identifier}";
-        $timeKey = "login_time_{$type}_{$identifier}";
-
-        if (!isset($_SESSION[$key])) {
-            $_SESSION[$key] = 0;
-            $_SESSION[$timeKey] = time();
-        }
-
-        $_SESSION[$key]++;
+        $stmt = $pdo->prepare(
+            'INSERT INTO login_attempts (identifier, type) VALUES (?, ?)'
+        );
+        $stmt->execute([$identifier, $type]);
     }
 
     /**
-     * Reset login attempts on successful login
+     * FIX: Reset attempts in database.
      */
-    public static function resetLoginAttempts(string $identifier, string $type = 'ip'): void
+    public static function resetLoginAttempts(\PDO $pdo, string $identifier, string $type = 'ip'): void
     {
-        $key = "login_attempts_{$type}_{$identifier}";
-        $timeKey = "login_time_{$type}_{$identifier}";
-
-        unset($_SESSION[$key], $_SESSION[$timeKey]);
+        $stmt = $pdo->prepare(
+            'DELETE FROM login_attempts WHERE identifier = ? AND type = ?'
+        );
+        $stmt->execute([$identifier, $type]);
     }
 
     /**
@@ -232,22 +209,20 @@ class Security
     public static function getClientIP(): string
     {
         $headers = [
-            'HTTP_CF_CONNECTING_IP', // Cloudflare
-            'HTTP_X_FORWARDED_FOR',  // Standard proxy
-            'HTTP_X_REAL_IP',        // Nginx
-            'REMOTE_ADDR'            // Direct connection
+            'HTTP_CF_CONNECTING_IP',
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_REAL_IP',
+            'REMOTE_ADDR'
         ];
 
         foreach ($headers as $header) {
             if (!empty($_SERVER[$header])) {
                 $ip = $_SERVER[$header];
 
-                // Handle comma-separated IPs (take first one)
                 if (strpos($ip, ',') !== false) {
                     $ip = trim(explode(',', $ip)[0]);
                 }
 
-                // Validate IP
                 if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
                     return $ip;
                 }
@@ -258,11 +233,13 @@ class Security
     }
 
     /**
-     * Sanitize input string
+     * FIX: sanitizeString no longer calls htmlspecialchars.
+     * Escaping belongs in the view layer, not before DB storage.
+     * This method now only trims whitespace.
      */
     public static function sanitizeString(string $input): string
     {
-        return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
+        return trim($input);
     }
 
     /**
@@ -287,17 +264,14 @@ class Security
      */
     public static function validateFilename(string $filename): bool
     {
-        // Check length
         if (strlen($filename) > 255) {
             return false;
         }
 
-        // Check for path traversal
         if (strpos($filename, '..') !== false || strpos($filename, '/') !== false || strpos($filename, '\\') !== false) {
             return false;
         }
 
-        // Check allowed extensions (customize as needed)
         $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
         $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
@@ -318,28 +292,20 @@ class Security
      */
     public static function setSecurityHeaders(): void
     {
-        // Prevent clickjacking
         header('X-Frame-Options: DENY');
-
-        // Prevent MIME type sniffing
         header('X-Content-Type-Options: nosniff');
-
-        // Referrer policy
         header('Referrer-Policy: strict-origin-when-cross-origin');
-
-        // Disable XSS protection (rely on CSP)
         header('X-XSS-Protection: 0');
+        header('Content-Type: text/html; charset=utf-8');
 
-        // HSTS (only for HTTPS)
         if (isset($_SERVER['HTTPS'])) {
             header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
         }
 
-        // Content Security Policy
-        $csp = "default-src 'self'; ";
+        $csp  = "default-src 'self'; ";
         $csp .= "script-src 'self'; ";
-        $csp .= "style-src 'self' 'unsafe-inline'; "; // Allow inline styles for simplicity
-        $csp .= "img-src 'self' data: https:; "; // Allow data URIs and HTTPS images
+        $csp .= "style-src 'self' 'unsafe-inline'; ";
+        $csp .= "img-src 'self' data: https:; ";
         $csp .= "font-src 'self'; ";
         $csp .= "connect-src 'self'; ";
         $csp .= "media-src 'none'; ";
@@ -355,14 +321,13 @@ class Security
     public static function logSecurityEvent(string $event, array $data = []): void
     {
         $logData = [
-            'timestamp' => date('Y-m-d H:i:s'),
-            'event' => $event,
-            'ip' => self::getClientIP(),
+            'timestamp'  => date('Y-m-d H:i:s'),
+            'event'      => $event,
+            'ip'         => self::getClientIP(),
             'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
-            'data' => $data
+            'data'       => $data
         ];
 
-        // In production, write to secure log file
         error_log('SECURITY: ' . json_encode($logData));
     }
 }
