@@ -17,9 +17,6 @@ class User
         $this->db = $db;
     }
 
-    /**
-     * Create a new user
-     */
     public function create(string $name, string $email, string $password): bool
     {
         $passwordErrors = \App\Core\Security::validatePasswordStrength($password);
@@ -31,7 +28,6 @@ class User
             throw new \InvalidArgumentException('Invalid email address');
         }
 
-        // FIX: sanitizeString now only trims — no double htmlspecialchars before DB storage
         $name  = \App\Core\Security::sanitizeString($name);
         $email = \App\Core\Security::sanitizeString($email);
 
@@ -45,41 +41,26 @@ class User
         ]) !== false;
     }
 
-    /**
-     * Find user by email
-     */
     public function findByEmail(string $email)
     {
         $sql = "SELECT * FROM users WHERE email = :email LIMIT 1";
-
         return $this->db->query($sql, [':email' => $email])->fetch(\PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Find user by ID
-     */
     public function findById(int $id)
     {
         $sql = "SELECT * FROM users WHERE id = :id LIMIT 1";
-
         return $this->db->query($sql, [':id' => $id])->fetch(\PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Verify password
-     */
     public function verifyPassword(string $password, string $hash): bool
     {
         return \App\Core\Security::verifyPassword($password, $hash);
     }
 
-    /**
-     * Update user profile
-     */
     public function update(int $id, string $name, string $email): bool
     {
         $sql = "UPDATE users SET name = :name, email = :email WHERE id = :id";
-
         return $this->db->query($sql, [
             ':id'    => $id,
             ':name'  => $name,
@@ -87,37 +68,38 @@ class User
         ]) !== false;
     }
 
-    // Setters and Getters
-    public function setName(string $name): void
+    /**
+     * Update password — caller must verify current password before calling this.
+     */
+    public function updatePassword(int $id, string $newPassword): bool
     {
-        $this->name = $name;
-    }
-
-    public function getName(): string
-    {
-        return $this->name;
-    }
-
-    public function setEmail(string $email): void
-    {
-        $this->email = $email;
-    }
-
-    public function getEmail(): string
-    {
-        return $this->email;
+        $sql = "UPDATE users SET password = :password WHERE id = :id";
+        return $this->db->query($sql, [
+            ':id'       => $id,
+            ':password' => \App\Core\Security::hashPassword($newPassword)
+        ]) !== false;
     }
 
     /**
-     * FIX: Use Argon2ID via Security::hashPassword(), consistent with the rest of the app.
+     * Check if an email is already taken by a different user.
      */
+    public function emailExistsForOtherUser(int $currentUserId, string $email): bool
+    {
+        $sql = "SELECT id FROM users WHERE email = :email AND id != :id LIMIT 1";
+        return (bool) $this->db->query($sql, [
+            ':email' => $email,
+            ':id'    => $currentUserId
+        ])->fetch();
+    }
+
+    // Getters / Setters
+    public function setName(string $name): void  { $this->name = $name; }
+    public function getName(): string             { return $this->name; }
+    public function setEmail(string $email): void { $this->email = $email; }
+    public function getEmail(): string            { return $this->email; }
     public function setPassword(string $password): void
     {
         $this->password = \App\Core\Security::hashPassword($password);
     }
-
-    public function getId(): int
-    {
-        return $this->id;
-    }
+    public function getId(): int { return $this->id; }
 }

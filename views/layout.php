@@ -14,10 +14,8 @@
                 <a href="/">Home</a>
                 <?php if (isset($user)): ?>
                     <a href="/admin/dashboard">Dashboard</a>
-                    <?php
-                        // FIX: Logout is now a POST form with CSRF to prevent CSRF-triggered logouts.
-                        $logoutCsrf = \App\Core\Security::getCsrfTokenField();
-                    ?>
+                    <a href="/admin/profile">Profile</a>
+                    <?php $logoutCsrf = \App\Core\Security::getCsrfTokenField(); ?>
                     <form method="POST" action="/admin/logout" style="display:inline;">
                         <?php echo $logoutCsrf; ?>
                         <button type="submit" class="nav-logout-btn">

@@ -31,13 +31,14 @@ class AdminController
         }
     }
 
+    // ─── Auth ────────────────────────────────────────────────────────────────
+
     public function login($params = [])
     {
         if ($this->auth->isAuthenticated()) {
             header('Location: /admin/dashboard');
             exit;
         }
-
         require '../views/admin/login.php';
     }
 
@@ -75,6 +76,26 @@ class AdminController
         exit;
     }
 
+    public function logout($params = [])
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /admin/dashboard');
+            exit;
+        }
+
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        if (!\App\Core\Security::validateCsrfToken($csrfToken)) {
+            header('Location: /admin/dashboard');
+            exit;
+        }
+
+        $this->auth->logout();
+        header('Location: /');
+        exit;
+    }
+
+    // ─── Dashboard ───────────────────────────────────────────────────────────
+
     public function dashboard($params = [])
     {
         $this->requireAuth();
@@ -84,6 +105,156 @@ class AdminController
 
         require '../views/admin/dashboard.php';
     }
+
+    // ─── Profile ─────────────────────────────────────────────────────────────
+
+    public function profileForm($params = [])
+    {
+        $this->requireAuth();
+        $user = $this->auth->getCurrentUser();
+        require '../views/admin/profile.php';
+    }
+
+    /**
+     * Handle name + email update.
+     */
+    public function updateProfile($params = [])
+    {
+        $this->requireAuth();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /admin/profile');
+            exit;
+        }
+
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        if (!\App\Core\Security::validateCsrfToken($csrfToken)) {
+            \App\Core\Security::logSecurityEvent('csrf_validation_failed', ['action' => 'update_profile', 'user_id' => $this->auth->getCurrentUserId()]);
+            $_SESSION['error'] = 'Security validation failed';
+            header('Location: /admin/profile');
+            exit;
+        }
+
+        $name  = trim($_POST['name'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+
+        if (empty($name) || empty($email)) {
+            $_SESSION['error'] = 'Name and email are required';
+            header('Location: /admin/profile');
+            exit;
+        }
+
+        if (strlen($name) > 100) {
+            $_SESSION['error'] = 'Name must be less than 100 characters';
+            header('Location: /admin/profile');
+            exit;
+        }
+
+        if (!\App\Core\Security::validateEmail($email)) {
+            $_SESSION['error'] = 'Invalid email address';
+            header('Location: /admin/profile');
+            exit;
+        }
+
+        $userId = $this->auth->getCurrentUserId();
+
+        // Prevent stealing another user's email
+        if ($this->userModel->emailExistsForOtherUser($userId, $email)) {
+            $_SESSION['error'] = 'That email is already in use';
+            header('Location: /admin/profile');
+            exit;
+        }
+
+        try {
+            if ($this->userModel->update($userId, $name, $email)) {
+                \App\Core\Security::logSecurityEvent('profile_updated', ['user_id' => $userId]);
+                $_SESSION['success'] = 'Profile updated successfully';
+            } else {
+                $_SESSION['error'] = 'Failed to update profile';
+            }
+        } catch (\Exception $e) {
+            \App\Core\Security::logSecurityEvent('profile_update_failed', ['user_id' => $userId, 'error' => $e->getMessage()]);
+            $_SESSION['error'] = 'An error occurred while updating your profile';
+        }
+
+        header('Location: /admin/profile');
+        exit;
+    }
+
+    /**
+     * Handle password change.
+     * Requires the current password to be confirmed before updating.
+     */
+    public function updatePassword($params = [])
+    {
+        $this->requireAuth();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /admin/profile');
+            exit;
+        }
+
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        if (!\App\Core\Security::validateCsrfToken($csrfToken)) {
+            \App\Core\Security::logSecurityEvent('csrf_validation_failed', ['action' => 'update_password', 'user_id' => $this->auth->getCurrentUserId()]);
+            $_SESSION['error'] = 'Security validation failed';
+            header('Location: /admin/profile');
+            exit;
+        }
+
+        $currentPassword = $_POST['current_password'] ?? '';
+        $newPassword     = $_POST['new_password'] ?? '';
+        $confirmPassword = $_POST['confirm_password'] ?? '';
+
+        if (empty($currentPassword) || empty($newPassword) || empty($confirmPassword)) {
+            $_SESSION['error'] = 'All password fields are required';
+            header('Location: /admin/profile');
+            exit;
+        }
+
+        if ($newPassword !== $confirmPassword) {
+            $_SESSION['error'] = 'New passwords do not match';
+            header('Location: /admin/profile');
+            exit;
+        }
+
+        $passwordErrors = \App\Core\Security::validatePasswordStrength($newPassword);
+        if (!empty($passwordErrors)) {
+            $_SESSION['error'] = implode(' ', $passwordErrors);
+            header('Location: /admin/profile');
+            exit;
+        }
+
+        $userId = $this->auth->getCurrentUserId();
+        $user   = $this->userModel->findById($userId);
+
+        if (!$this->userModel->verifyPassword($currentPassword, $user['password'])) {
+            \App\Core\Security::logSecurityEvent('password_change_failed', ['reason' => 'wrong_current_password', 'user_id' => $userId]);
+            $_SESSION['error'] = 'Current password is incorrect';
+            header('Location: /admin/profile');
+            exit;
+        }
+
+        try {
+            if ($this->userModel->updatePassword($userId, $newPassword)) {
+                \App\Core\Security::logSecurityEvent('password_changed', ['user_id' => $userId]);
+                // Regenerate session after password change
+                \App\Core\Security::regenerateSession();
+                \App\Core\Security::regenerateCsrfToken();
+                $_SESSION['success'] = 'Password changed successfully';
+            } else {
+                $_SESSION['error'] = 'Failed to change password';
+            }
+        } catch (\Exception $e) {
+            \App\Core\Security::logSecurityEvent('password_change_failed', ['user_id' => $userId, 'error' => $e->getMessage()]);
+            $_SESSION['error'] = 'An error occurred while changing your password';
+        }
+
+        header('Location: /admin/profile');
+        exit;
+    }
+
+    // ─── Posts ───────────────────────────────────────────────────────────────
 
     public function createPostForm($params = [])
     {
@@ -108,7 +279,6 @@ class AdminController
             exit;
         }
 
-        // FIX: Only trim, do NOT htmlspecialchars before storing to DB
         $title   = trim($_POST['title'] ?? '');
         $content = trim($_POST['content'] ?? '');
 
@@ -132,7 +302,6 @@ class AdminController
 
         $author_id = $this->auth->getCurrentUserId();
 
-        // FIX: Use fully qualified \Exception to ensure correct catch in namespace
         try {
             if ($this->postModel->create($title, $content, $author_id)) {
                 $_SESSION['success'] = 'Post created successfully';
@@ -156,7 +325,6 @@ class AdminController
         $this->requireAuth();
 
         $id = $params['id'] ?? null;
-
         if (!$id) {
             header('Location: /admin/dashboard');
             exit;
@@ -190,7 +358,6 @@ class AdminController
         }
 
         $id      = $params['id'] ?? null;
-        // FIX: Only trim, no htmlspecialchars before DB storage
         $title   = trim($_POST['title'] ?? '');
         $content = trim($_POST['content'] ?? '');
 
@@ -226,7 +393,6 @@ class AdminController
             die('Forbidden');
         }
 
-        // FIX: Fully qualified \Exception
         try {
             if ($this->postModel->update($id, $title, $content)) {
                 $_SESSION['success'] = 'Post updated successfully';
@@ -263,7 +429,6 @@ class AdminController
         }
 
         $id = $params['id'] ?? null;
-
         if (!$id) {
             header('Location: /admin/dashboard');
             exit;
@@ -283,7 +448,6 @@ class AdminController
             die('Forbidden');
         }
 
-        // FIX: Fully qualified \Exception
         try {
             if ($this->postModel->delete($id)) {
                 $_SESSION['success'] = 'Post deleted successfully';
@@ -300,26 +464,5 @@ class AdminController
             header('Location: /admin/dashboard');
             exit;
         }
-    }
-
-    /**
-     * FIX: Logout requires a POST request with CSRF token to prevent CSRF-triggered logouts.
-     */
-    public function logout($params = [])
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: /admin/dashboard');
-            exit;
-        }
-
-        $csrfToken = $_POST['csrf_token'] ?? '';
-        if (!\App\Core\Security::validateCsrfToken($csrfToken)) {
-            header('Location: /admin/dashboard');
-            exit;
-        }
-
-        $this->auth->logout();
-        header('Location: /');
-        exit;
     }
 }
