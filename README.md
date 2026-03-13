@@ -1,152 +1,12 @@
-# Simple CMS - PHP OOP Learning Project
+# Simple CMS — PHP OOP Learning Project
 
 A minimal CMS built with PHP OOP principles to practice and refresh core concepts.
 
-## Features
+---
 
-### Public Side
-- ✅ View all posts
-- ✅ View individual post
+## Quick Start
 
-### Admin Side
-- ✅ User authentication (login/logout)
-- ✅ Create new posts
-- ✅ Edit existing posts
-- ✅ Delete posts
-- ✅ Admin dashboard
-
-## Security Features
-
-### Session Security
-- ✅ Secure session configuration with strict mode enabled
-- ✅ HttpOnly and Secure cookie flags
-- ✅ SameSite=Strict attribute
-- ✅ Session regeneration on successful login
-- ✅ Session inactivity timeout (30 minutes)
-- ✅ Proper session destruction on logout with cookie cleanup
-
-### Authentication & Authorization
-- ✅ Password hashing using Argon2ID
-- ✅ Password strength requirements (12+ chars, uppercase, lowercase, numbers)
-- ✅ Login rate limiting (10 attempts per IP, 5 per username in 15 minutes)
-- ✅ Login attempt logging with IP tracking
-- ✅ Admin-only access controls with session validation
-- ✅ CSRF protection on all forms and sensitive operations
-
-### Input Validation & Sanitization
-- ✅ Filename validation for uploads (allowed extensions, length limits, path traversal prevention)
-- ✅ URL validation for external links (http/https only)
-- ✅ HTML escaping (htmlspecialchars) on all user-controlled output
-- ✅ Input trimming and type casting (e.g., intval for IDs)
-
-### Database Security
-- ✅ PDO with exception error mode
-- ✅ Foreign key constraints enabled
-- ✅ Prepared statements for all queries
-- ✅ Transaction handling for atomic operations
-- ✅ Database connection singleton pattern
-
-### HTTP Security Headers
-- ✅ X-Frame-Options: DENY (prevents clickjacking)
-- ✅ X-Content-Type-Options: nosniff
-- ✅ Referrer-Policy: strict-origin-when-cross-origin
-- ✅ X-XSS-Protection: 0 (disabled, relies on CSP)
-- ✅ Strict-Transport-Security (HSTS) for HTTPS
-- ✅ Content Security Policy (CSP) restricting script/style sources
-
-### Error Handling & Logging
-- ✅ Error logging for security events (failed logins, validation failures)
-- ✅ Graceful error handling without information disclosure
-- ✅ Database error logging
-
-## OOP Concepts Practiced
-
-### 1. Classes & Objects
-- `User` - User model for authentication
-- `Post` - Post model for CRUD operations
-- `Router` - Request routing
-- `Database` - PDO database abstraction layer
-- `AuthService` - Authentication business logic
-
-### 2. Encapsulation
-- Private properties and methods (e.g., `$db`, `matchPattern()`)
-- Getters and setters for safe property access
-
-### 3. Dependency Injection
-- Controllers receive `Database` through constructor
-- `AuthService` receives `Database` as dependency
-- Models receive `Database` through constructor
-- Promotes loose coupling and testability
-
-### 4. MVC Pattern
-```
-Controllers/
-├── PostController     - Handles post display logic
-└── AdminController    - Handles admin operations
-
-Models/
-├── Post              - Post data & operations
-└── User              - User data & operations
-
-views/
-├── posts/            - Public views
-└── admin/            - Admin views
-```
-
-### 5. Routing with Dynamic Parameters
-- Static routes: `/` → `PostController@index`
-- Dynamic routes: `/posts/{id}` → Captures ID parameter
-- HTTP method support: GET, POST
-
-### 6. Authentication & Authorization
-- Password hashing with Argon2ID
-- Session security with strict mode, HttpOnly, Secure, and SameSite=Strict
-- Session regeneration on successful login
-- Session inactivity timeout (30 minutes)
-- CSRF protection on all forms
-- Secure session destruction on logout
-
-## Project Structure
-
-```
-tecaim/
-├── app/
-│   ├── Controllers/
-│   │   ├── PostController.php
-│   │   └── AdminController.php
-│   ├── Models/
-│   │   ├── Post.php
-│   │   └── User.php
-│   ├── Services/
-│   │   └── AuthService.php
-│   └── Core/
-│       ├── Router.php
-│       ├── Database.php
-│       └── Security.php
-├── config/
-│   └── database.php
-├── public/
-│   ├── index.php
-│   └── style.css
-├── views/
-│   ├── layout.php
-│   ├── posts/
-│   │   ├── index.php
-│   │   └── show.php
-│   └── admin/
-│       ├── login.php
-│       ├── dashboard.php
-│       ├── create-post.php
-│       └── edit-post.php
-├── vendor/
-├── composer.json
-└── setup.php
-```
-
-## Installation & Setup
-
-### 1. Configure Database
-Edit `config/database.php`:
+**1. Configure the database** — edit `config/database.php`:
 ```php
 return [
     'host'     => 'localhost',
@@ -156,133 +16,90 @@ return [
 ];
 ```
 
-### 2. Run Setup
-From the project root:
+**2. Run setup** (creates DB, tables, and default admin user):
 ```bash
 php setup.php
 ```
 
-This will:
-- Create the `tecaim` database if it doesn't exist
-- Create the `users` table
-- Create the `posts` table
-- Create the default admin user
-
-### 3. Start Development Server
+**3. Start the server:**
 ```bash
 php -S localhost:8000 -t public
 ```
 
-### 4. Open in Browser
-Visit: **http://localhost:8000**
-
-## Usage
-
-### Public Site
-- Home page: `/` — View all posts
-- Single post: `/posts/{id}` — View specific post
-
-### Admin Panel
-- Login: `/admin/login`
-- Dashboard: `/admin/dashboard`
-- Create post: `/admin/posts/create`
-- Edit post: `/admin/posts/{id}/edit`
-- Delete: Form submission with CSRF protection
-- Logout: `/admin/logout`
-
-Default credentials: **admin@cms.com** / **password**
-
-## Key Learning Points
-
-### 1. Constructor Dependency Injection
-```php
-public function __construct()
-{
-    $config = require '../config/database.php';
-    $db = Database::getInstance($config);
-    $this->postModel = new Post($db);
-}
-```
-
-### 2. Model Pattern
-```php
-class Post {
-    public function create($title, $content, $author_id) { ... }
-    public function update($id, $title, $content) { ... }
-    public function delete($id) { ... }
-}
-```
-
-### 3. Service Layer
-```php
-class AuthService {
-    public function login($email, $password) { ... }
-    public function isAuthenticated() { ... }
-    public function getCurrentUser() { ... }
-}
-```
-
-### 4. Dynamic Routing
-```php
-// Pattern matching with parameter extraction
-private function matchPattern($pattern, $uri) {
-    // /posts/{id} matches /posts/123
-    // Extracts: ['id' => '123']
-}
-```
-
-## Key Routes
-
-```
-GET  /                        → View all posts
-GET  /posts/{id}              → View specific post
-GET  /admin/login             → Login form
-POST /admin/login             → Process login
-GET  /admin/dashboard         → Admin dashboard
-GET  /admin/posts/create      → Create post form
-POST /admin/posts/create      → Create post
-GET  /admin/posts/{id}/edit   → Edit post form
-POST /admin/posts/{id}/edit   → Update post
-POST /admin/posts/{id}/delete → Delete post
-GET  /admin/logout            → Logout
-```
-
-## MySQL Queries Reference
-
-```sql
--- View all posts with author info
-SELECT posts.*, users.name AS author_name
-FROM posts
-LEFT JOIN users ON posts.author_id = users.id
-ORDER BY posts.created_at DESC;
-
--- Get specific post
-SELECT * FROM posts WHERE id = 1;
-
--- Get user's posts
-SELECT * FROM posts WHERE author_id = 1;
-```
-
-## Next Steps to Enhance
-
-1. **Add a Validator class** — Centralise input validation
-2. **Add Comments** — Comments model & controller (1-to-many relationship)
-3. **Add Categories** — Category model with many-to-many relationship
-4. **Add File Uploads** — Featured images for posts
-5. **Add Unit Tests** — PHPUnit test suite for models & services
-6. **Add a Logger class** — Log user actions and security events
-7. **Add custom Exceptions** — Structured error handling
-8. **Add Caching** — Cache frequently accessed data
-9. **Add Roles & Permissions** — UserRole model and access control
-
-## Security Notes
-
-⚠️ This is a learning project. In production, also consider:
-- Email verification on registration
-- Password reset functionality
-- HTTPS enforcement
-- Environment-based config (no credentials in version control)
+**4. Open** http://localhost:8000
 
 ---
 
-**Created as a PHP OOP learning project** 📚
+## Routes
+
+```
+GET  /                          View all posts
+GET  /posts/{id}                View a post
+GET  /admin/login               Login form
+POST /admin/login               Process login
+POST /admin/logout              Logout (CSRF protected)
+GET  /admin/dashboard           Admin dashboard
+GET  /admin/posts/create        Create post form
+POST /admin/posts/create        Create post
+GET  /admin/posts/{id}/edit     Edit post form
+POST /admin/posts/{id}/edit     Update post
+POST /admin/posts/{id}/delete   Delete post
+```
+
+---
+
+## Security
+
+- **Passwords** — Argon2ID hashing, 12+ char strength requirements
+- **Sessions** — strict mode, HttpOnly + Secure + SameSite=Strict cookies, 30-min timeout, regeneration on login
+- **CSRF** — token on every form and state-changing action (including logout)
+- **Rate limiting** — 10 attempts/IP and 5 attempts/username per 15 min, stored in DB
+- **Input** — prepared statements everywhere, trimming and type casting, output escaped with `htmlspecialchars` at render time
+- **Headers** — `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `CSP`, `HSTS` (on HTTPS)
+- **Authorization** — ownership check before any edit/delete (user can only modify their own posts)
+
+---
+
+## OOP Concepts Practiced
+
+**Classes & MVC structure:**
+```
+app/Controllers/    AdminController, PostController
+app/Models/         Post, User
+app/Services/       AuthService
+app/Core/           Router, Database, Security
+```
+
+**Dependency Injection** — controllers and services receive `Database` through their constructors, promoting loose coupling and testability.
+
+**Encapsulation** — private properties and methods with public getters/setters.
+
+**Singleton** — `Database::getInstance()` ensures a single PDO connection per request.
+
+**Routing with dynamic parameters** — `/posts/{id}` extracts named parameters via regex pattern matching.
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| 404 on all pages | Check routes in `public/index.php`; ensure Apache rewrite rules are active if not using the built-in server |
+| Database connection error | Verify MySQL is running and `config/database.php` credentials are correct |
+| Tables don't exist | Re-run `php setup.php` |
+| Login fails | Re-run `php setup.php` to ensure the admin user exists; clear browser cookies |
+
+---
+
+## Next Steps
+
+1. **Validator class** — centralise input validation logic
+2. **Comments** — 1-to-many relationship with posts
+3. **Categories** — many-to-many relationship with posts
+4. **File uploads** — featured images for posts
+5. **Unit tests** — PHPUnit suite for models and services
+6. **Logger class** — structured log for user actions and security events
+7. **Custom exceptions** — typed error handling
+8. **Roles & permissions** — `UserRole` model and access control
+
+> ⚠️ **Production checklist:** use environment variables for config (never commit credentials), enforce HTTPS, add email verification, and implement password reset.
