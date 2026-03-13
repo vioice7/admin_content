@@ -67,7 +67,14 @@ class AdminController
         }
 
         if (!$this->auth->login($email, $password)) {
-            $_SESSION['error'] = 'Invalid email or password';
+            // #8 FIX: distinguish rate-limit from wrong credentials so the
+            // user knows to wait, without revealing the limit threshold.
+            if (!empty($_SESSION['login_rate_limited'])) {
+                unset($_SESSION['login_rate_limited']);
+                $_SESSION['error'] = 'Too many attempts. Please wait a few minutes and try again.';
+            } else {
+                $_SESSION['error'] = 'Invalid email or password';
+            }
             header('Location: /admin/login');
             exit;
         }
@@ -117,6 +124,8 @@ class AdminController
 
     /**
      * Handle name + email update.
+     * #6 FIX: regenerate CSRF token after successful profile update,
+     *         consistent with updatePassword().
      */
     public function updateProfile($params = [])
     {
@@ -168,6 +177,7 @@ class AdminController
         try {
             if ($this->userModel->update($userId, $name, $email)) {
                 \App\Core\Security::logSecurityEvent('profile_updated', ['user_id' => $userId]);
+                \App\Core\Security::regenerateCsrfToken(); // #6 FIX
                 $_SESSION['success'] = 'Profile updated successfully';
             } else {
                 $_SESSION['error'] = 'Failed to update profile';
@@ -238,7 +248,6 @@ class AdminController
         try {
             if ($this->userModel->updatePassword($userId, $newPassword)) {
                 \App\Core\Security::logSecurityEvent('password_changed', ['user_id' => $userId]);
-                // Regenerate session after password change
                 \App\Core\Security::regenerateSession();
                 \App\Core\Security::regenerateCsrfToken();
                 $_SESSION['success'] = 'Password changed successfully';

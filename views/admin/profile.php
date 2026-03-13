@@ -18,13 +18,15 @@ $content = <<<HTML
         <div class="form-group">
             <label for="name">Name:</label>
             <input type="text" id="name" name="name"
-                   value="{$currentName}" required maxlength="100">
+                   value="{$currentName}" required maxlength="100"
+                   autocomplete="name">
         </div>
 
         <div class="form-group">
             <label for="email">Email:</label>
             <input type="email" id="email" name="email"
-                   value="{$currentEmail}" required maxlength="100">
+                   value="{$currentEmail}" required maxlength="100"
+                   autocomplete="email">
         </div>
 
         <div class="form-actions">
@@ -38,7 +40,7 @@ $content = <<<HTML
     <!-- ── Change password ───────────────────────────────────────── -->
     <h2 class="section-title">Change Password</h2>
     <p style="margin-bottom:16px;color:#666;font-size:14px;">
-        Min 12 characters, at least one uppercase, one lowercase, one number.
+        Min 12 characters, at least one uppercase, one lowercase, one number, one special character.
     </p>
 
     <form method="POST" action="/admin/profile/password">
@@ -46,17 +48,20 @@ $content = <<<HTML
 
         <div class="form-group">
             <label for="current_password">Current Password:</label>
-            <input type="password" id="current_password" name="current_password" required>
+            <input type="password" id="current_password" name="current_password" required
+                   autocomplete="current-password">
         </div>
 
         <div class="form-group">
             <label for="new_password">New Password:</label>
-            <input type="password" id="new_password" name="new_password" required>
+            <input type="password" id="new_password" name="new_password" required
+                   autocomplete="new-password">
         </div>
 
         <div class="form-group">
             <label for="confirm_password">Confirm New Password:</label>
-            <input type="password" id="confirm_password" name="confirm_password" required>
+            <input type="password" id="confirm_password" name="confirm_password" required
+                   autocomplete="new-password">
         </div>
 
         <div class="form-actions">

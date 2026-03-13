@@ -22,16 +22,20 @@ class PostController
 
     /**
      * Display all posts (public side)
+     * #4 FIX: clamp $page to [1, $totalPages] so a huge ?page= value cannot
+     *         trigger a massive SQL OFFSET against an empty result set.
      */
     public function index($params = [])
     {
-        $page   = max(1, (int) ($_GET['page'] ?? 1));
-        $limit  = 4;
+        $limit      = 4;
+        $totalPosts = $this->postModel->getTotalPosts();
+        $totalPages = max(1, (int) ceil($totalPosts / $limit));
+
+        // #4: clamp between 1 and $totalPages
+        $page   = max(1, min((int) ($_GET['page'] ?? 1), $totalPages));
         $offset = ($page - 1) * $limit;
 
-        $posts      = $this->postModel->getPostsPaginated($limit, $offset);
-        $totalPosts = $this->postModel->getTotalPosts();
-        $totalPages = (int) ceil($totalPosts / $limit);
+        $posts = $this->postModel->getPostsPaginated($limit, $offset);
 
         require __DIR__ . '/../../views/posts/index.php';
     }

@@ -12,7 +12,7 @@ class AuthService
 {
     private User $userModel;
     private Database $db;
-    private const SESSION_KEY = 'user_id';
+    private const SESSION_KEY = '_cms_uid'; // #11: non-guessable session key
 
     public function __construct(Database $db)
     {
@@ -21,7 +21,10 @@ class AuthService
     }
 
     /**
-     * Register a new user
+     * Register a new user.
+     * #blocker: CLI / internal use only — not exposed via any public route.
+     * Call this only from setup.php or a future admin-only endpoint with its
+     * own auth + CSRF gate.
      */
     public function register(string $name, string $email, string $password): bool
     {
@@ -33,18 +36,22 @@ class AuthService
     }
 
     /**
-     * Login a user
-     * FIX: Pass PDO connection to rate limit methods (no longer session-based).
+     * Login a user.
+     * Fix #1 : regenerate session BEFORE writing the user ID so the new
+     *           session ID is the one that carries the authenticated identity.
+     * Fix #8 : set a session flag on rate-limit so the controller can show
+     *           a "please wait" message without leaking the limit threshold.
      */
     public function login(string $email, string $password): bool
     {
-        $email     = \App\Core\Security::sanitizeString($email);
-        $clientIP  = \App\Core\Security::getClientIP();
-        $pdo       = $this->db->getConnection();
+        $email    = \App\Core\Security::sanitizeString($email);
+        $clientIP = \App\Core\Security::getClientIP();
+        $pdo      = $this->db->getConnection();
 
         // Check IP rate limit
         if (!\App\Core\Security::checkLoginRateLimit($pdo, $clientIP, 'ip')) {
             \App\Core\Security::logSecurityEvent('rate_limit_exceeded', ['type' => 'ip', 'identifier' => $clientIP]);
+            $_SESSION['login_rate_limited'] = true; // #8
             return false;
         }
 
@@ -59,6 +66,7 @@ class AuthService
         // Check per-user rate limit
         if (!\App\Core\Security::checkLoginRateLimit($pdo, $user['email'], 'user')) {
             \App\Core\Security::logSecurityEvent('rate_limit_exceeded', ['type' => 'user', 'identifier' => $user['email']]);
+            $_SESSION['login_rate_limited'] = true; // #8
             return false;
         }
 
@@ -73,10 +81,11 @@ class AuthService
         \App\Core\Security::resetLoginAttempts($pdo, $clientIP, 'ip');
         \App\Core\Security::resetLoginAttempts($pdo, $user['email'], 'user');
 
-        $_SESSION[self::SESSION_KEY] = $user['id'];
-
+        // #1 FIX: regenerate first, THEN write identity into the new session.
         \App\Core\Security::regenerateSession();
         \App\Core\Security::regenerateCsrfToken();
+
+        $_SESSION[self::SESSION_KEY] = $user['id'];
 
         \App\Core\Security::logSecurityEvent('login_successful', ['user_id' => $user['id']]);
 

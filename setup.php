@@ -3,7 +3,15 @@
 /**
  * setup.php - One-time database initialisation script
  * Run from project root: php setup.php
+ *
+ * #2 FIX: block web access entirely. If this file is ever reachable via HTTP
+ * (e.g. misconfigured webroot pointing to project root instead of public/)
+ * a visitor could re-seed the database and recreate the admin account.
  */
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    exit;
+}
 
 const LINE = PHP_EOL;
 
@@ -111,7 +119,6 @@ $check->execute(['admin@cms.com']);
 if ($check->fetch()) {
     log_step('Admin user already exists, skipping.');
 } else {
-    // FIX: Use Argon2ID (consistent with Security::hashPassword())
     $hash = password_hash('password', PASSWORD_ARGON2ID);
     $stmt = $pdo->prepare('INSERT INTO users (name, email, password) VALUES (?, ?, ?)');
     $stmt->execute(['Admin', 'admin@cms.com', $hash]);
