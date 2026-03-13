@@ -13,7 +13,7 @@ class PostController
 
     public function __construct()
     {
-        $config = require '../config/database.php';
+        $config = require __DIR__ . '/../../config/database.php';
         $db = \App\Core\Database::getInstance($config);
 
         $this->postModel = new Post($db);
@@ -33,7 +33,7 @@ class PostController
         $totalPosts = $this->postModel->getTotalPosts();
         $totalPages = (int) ceil($totalPosts / $limit);
 
-        require '../views/posts/index.php';
+        require __DIR__ . '/../../views/posts/index.php';
     }
 
     /**
@@ -61,6 +61,6 @@ class PostController
             die('Post not found');
         }
 
-        require '../views/posts/show.php';
+        require __DIR__ . '/../../views/posts/show.php';
     }
 }

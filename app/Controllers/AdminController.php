@@ -15,7 +15,7 @@ class AdminController
 
     public function __construct()
     {
-        $config = require '../config/database.php';
+        $config = require __DIR__ . '/../../config/database.php';
         $db = \App\Core\Database::getInstance($config);
 
         $this->postModel = new Post($db);
@@ -39,7 +39,7 @@ class AdminController
             header('Location: /admin/dashboard');
             exit;
         }
-        require '../views/admin/login.php';
+        require __DIR__ . '/../../views/admin/login.php';
     }
 
     public function handleLogin($params = [])
@@ -103,7 +103,7 @@ class AdminController
         $posts = $this->postModel->getPostsByAuthor($this->auth->getCurrentUserId());
         $user  = $this->auth->getCurrentUser();
 
-        require '../views/admin/dashboard.php';
+        require __DIR__ . '/../../views/admin/dashboard.php';
     }
 
     // ─── Profile ─────────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ class AdminController
     {
         $this->requireAuth();
         $user = $this->auth->getCurrentUser();
-        require '../views/admin/profile.php';
+        require __DIR__ . '/../../views/admin/profile.php';
     }
 
     /**
@@ -259,7 +259,7 @@ class AdminController
     public function createPostForm($params = [])
     {
         $this->requireAuth();
-        require '../views/admin/create-post.php';
+        require __DIR__ . '/../../views/admin/create-post.php';
     }
 
     public function createPost($params = [])
@@ -337,7 +337,7 @@ class AdminController
             die('Forbidden');
         }
 
-        require '../views/admin/edit-post.php';
+        require __DIR__ . '/../../views/admin/edit-post.php';
     }
 
     public function updatePost($params = [])

@@ -10,7 +10,7 @@ class SitemapController
 
     public function __construct()
     {
-        $config = require '../config/database.php';
+        $config = require __DIR__ . '/../../config/database.php';
         $db = \App\Core\Database::getInstance($config);
         $this->postModel = new Post($db);
     }
