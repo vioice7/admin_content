@@ -62,4 +62,4 @@ $content = <<<HTML
 </div>
 HTML;
 
-require '../views/layout.php';
+require __DIR__ . '/../layout.php';

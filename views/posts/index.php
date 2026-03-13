@@ -60,4 +60,4 @@ $content = <<<HTML
 {$paginationHtml}
 HTML;
 
-require '../views/layout.php';
+require __DIR__ . '/../layout.php';
