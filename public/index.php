@@ -11,6 +11,7 @@ $router = new Router();
 // Public Routes
 $router->get('/', 'PostController@index');
 $router->get('/posts/{id}', 'PostController@show');
+$router->get('/sitemap.xml', 'SitemapController@index');
 
 // Admin — Auth
 $router->get('/admin/login', 'AdminController@login');
