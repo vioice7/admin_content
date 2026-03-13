@@ -1,8 +1,7 @@
 {
-    "name": "vio/tecaim",
+    "name": "app/cms",
     "autoload": {
         "psr-4": {
-            "Vio\\Tecaim\\": "src/",
             "App\\": "app/"
         }
     },

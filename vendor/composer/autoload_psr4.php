@@ -6,6 +6,5 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
-    'Vio\\Tecaim\\' => array($baseDir . '/src'),
     'App\\' => array($baseDir . '/app'),
 );
