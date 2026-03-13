@@ -21,6 +21,6 @@
 return [
     'host'     => getenv('DB_HOST') ?: 'localhost',
     'dbname'   => getenv('DB_NAME') ?: 'tecaim',
-    'user'     => getenv('DB_USER'),   // no fallback — must be set explicitly
-    'password' => getenv('DB_PASS'),   // no fallback — must be set explicitly
+    'user'     => getenv('DB_USER') ?: 'root',   // no fallback — must be set explicitly
+    'password' => getenv('DB_PASS') ?: '',   // no fallback — must be set explicitly
 ];

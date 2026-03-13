@@ -99,6 +99,14 @@ button.button {
     background-color: #2980b9;
 }
 
+.button-success {
+    background-color: #27ae61;
+}
+
+.button-success:hover {
+    background-color: #2ecc71;
+}
+
 .button-danger {
     background-color: #e74c3c;
 }

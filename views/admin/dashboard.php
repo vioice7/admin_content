@@ -55,7 +55,7 @@ $content = <<<HTML
 
     <div class="section">
         <h2 class="section-title">My Posts</h2>
-        <a href="/admin/posts/create" class="button">+ Create New Post</a>
+        <a href="/admin/posts/create" class="button button-success">Create New Post</a>
     </div>
 
     {$postsHtml}
