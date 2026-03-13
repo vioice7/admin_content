@@ -23,7 +23,7 @@ php setup.php
 
 **3. Start the server:**
 ```bash
-php -S localhost:8000 -t public
+php -S localhost:8000 -t public public/router.php
 ```
 
 **4. Open** http://localhost:8000
