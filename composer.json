@@ -1,0 +1,10 @@
+{
+    "name": "vio/tecaim",
+    "autoload": {
+        "psr-4": {
+            "Vio\\Tecaim\\": "src/",
+            "App\\": "app/"
+        }
+    },
+    "require": {}
+}
